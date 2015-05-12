@@ -2,7 +2,7 @@
 #include <mcp_can.h>
 #include <SPI.h>
 
-MCP_CAN CAN0(10);                                      // Set CS to pin 10
+MCP_CAN CAN0(10); // Set CS to pin 10
 
 int n = 0;
 void setup()
@@ -10,8 +10,10 @@ void setup()
   delay(500);
   Serial.begin(115200);
   // init can bus, baudrate: 500k
-  if (CAN0.begin(CAN_1000KBPS) == CAN_OK) Serial.print("can init ok!!\r\n");
-  else Serial.print("Can init fail!!\r\n");
+  if (CAN0.begin(CAN_1000KBPS) == CAN_OK)
+    Serial.print("can init ok!!\r\n");
+  else
+    Serial.print("Can init fail!!\r\n");
 }
 
 void generateRPMAndRandomFrames();
@@ -19,10 +21,12 @@ void generateStaticFrames();
 
 void loop()
 {
-  // Generate 20 frames where only the first has RPM and gear in a sensible fashion.
-  //generateRPMAndRandomFrames();
+  // Generate 20 frames where only the first has RPM and gear in a sensible
+  // fashion.
+  generateRPMAndRandomFrames();
 
-  generateStaticFrames();
+  // Generate frame with only 0x600 in order to debug if needed
+  // generateStaticFrames();
 }
 
 void generateRPMAndRandomFrames()
@@ -34,11 +38,13 @@ void generateRPMAndRandomFrames()
   static unsigned int gear = 0;
   static unsigned long lastRpmUpdate = 0;
   static unsigned long lastPacket = 0;
+  static unsigned long deltaT = 2;
   static boolean upDown = 1;
-  byte stmp[8] = { random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255) };
+  byte stmp[8]
+      = { random(0, 255), random(0, 255), random(0, 255), random(0, 255),
+          random(0, 255), random(0, 255), random(0, 255), random(0, 255) };
 
-
-  if (millis() - lastPacket > 2)
+  if (millis() - lastPacket > deltaT)
   {
     lastPacket = millis();
     if (n == 0)
@@ -47,28 +53,25 @@ void generateRPMAndRandomFrames()
       stmp[0] = temp8bit;
       temp8bit = (rpm);
       stmp[1] = temp8bit;
+    }
+    else if (n == 1)
+    {
       temp8bit = ((gear >> 8));
       stmp[4] = temp8bit;
       temp8bit = (gear);
       stmp[5] = temp8bit;
-      Serial.println("New packet: ");
-      Serial.println(stmp[0], BIN);
-      Serial.println(stmp[1], BIN);
-      temp16bit = ((stmp[0] << 8) + stmp[1]);
-      Serial.println(temp16bit);
     }
     else
     {
-      for (count = 0; count<8; count++)
+      for (count = 0; count < 8; count++)
       {
         stmp[count] = random(0, 255);
       }
     }
-
     CAN0.sendMsgBuf((0x600 + n), 1, 8, stmp);
   }
 
-  if (millis() - lastRpmUpdate > 100)
+  if (millis() - lastRpmUpdate > 10)
   {
     lastRpmUpdate = millis();
     // Count RPM up
@@ -93,10 +96,9 @@ void generateRPMAndRandomFrames()
     }
     gear = random(1, 8);
   }
-
-  if (n == 20)
+  if (n >= 20)
   {
-    //Serial.println("20 cycles");
+    // Serial.println("20 cycles");
     n = 0;
   }
   else
@@ -107,7 +109,7 @@ void generateRPMAndRandomFrames()
 
 void generateStaticFrames()
 {
-  byte stmp[8] = { random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255), random(0, 255) };
+  byte stmp[8] = { 0 };
 
   uint16_t staticRPM = 12000;
   uint16_t staticEOT = 100;
