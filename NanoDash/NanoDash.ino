@@ -13,7 +13,7 @@
 #include "Wire.h"
 
 // Enable or disable serial, needed for testMode!
-#define SERIAL_ENABLED
+// #define SERIAL_ENABLED
 
 /*
 // Defines for LED strip
@@ -55,7 +55,7 @@
 */
 
 // Uncomment if you want the data sent over CAN.
-// Data format for acceleration is signed int with 1024 = 1g
+// Data format for acceleration is signed int with 8192 = 1g
 // Data format for angles is signed int with 100 = 1 degree
 #define MPU_DATA_TO_CAN
 
@@ -78,6 +78,7 @@ MPU6050 mpu;
 long unsigned int rxId;
 byte len = 0;
 byte rxBuf[8];
+byte txBuf[8];
 // For sending yaw/pitch/roll over CANBUS
 int16_t rotation[3] = { 0 };
 // For sending x/y/z acceleration over CANBUS
@@ -179,13 +180,13 @@ void setup()
   // Note that for every MPU you need to find these values
   // Calibration software can be found at
   // https://github.com/thisisG/MPU5060-PID-Calibration
-  mpu.setXAccelOffset(-5488);
-  mpu.setYAccelOffset(-1464);
-  mpu.setZAccelOffset(1315);
+  mpu.setXAccelOffset(1848);
+  mpu.setYAccelOffset(1481);
+  mpu.setZAccelOffset(1198);
 
-  mpu.setXGyroOffset(0);
-  mpu.setYGyroOffset(-75);
-  mpu.setZGyroOffset(40);
+  mpu.setXGyroOffset(-5);
+  mpu.setYGyroOffset(-28);
+  mpu.setZGyroOffset(12);
 
   // make sure it worked (returns 0 if so)
   if (devStatus == 0)
@@ -376,26 +377,26 @@ void loop()
     mpu.dmpGetLinearAccel(&aaReal, &aa, &gravity);
     mpu.dmpGetLinearAccelInWorld(&aaWorld, &aaReal, &q);
     mpu.dmpGetYawPitchRoll(ypr, &q, &gravity);
-    acceleration[0] = static_cast<int16_t>(aaWorld.x * 1024);
-    acceleration[1] = static_cast<int16_t>(aaWorld.y * 1024);
-    acceleration[2] = static_cast<int16_t>(aaWorld.z * 1024);
-    rxBuf[0] = (acceleration[0] >> 8);
-    rxBuf[1] = acceleration[0];
-    rxBuf[2] = (acceleration[1] >> 8);
-    rxBuf[3] = acceleration[1];
-    rxBuf[4] = (acceleration[2] >> 8);
-    rxBuf[5] = acceleration[2];
-    CAN0.sendMsgBuf(0x100, 1, 8, rxBuf);
-    rotation[0] = static_cast<int16_t>(100 * ypr[0] * (180 / M_PI)); // Yaw
-    rotation[1] = static_cast<int16_t>(100 * ypr[0] * (180 / M_PI)); // Pitch
-    rotation[2] = static_cast<int16_t>(100 * ypr[0] * (180 / M_PI)); // Roll
-    rxBuf[0] = (rotation[0] >> 8);
-    rxBuf[1] = rotation[0];
-    rxBuf[2] = (rotation[1] >> 8);
-    rxBuf[3] = rotation[1];
-    rxBuf[4] = (rotation[2] >> 8);
-    rxBuf[5] = rotation[2];
-    CAN0.sendMsgBuf(0x101, 1, 8, rxBuf);
+    acceleration[0] = static_cast<int16_t>(aaWorld.x);
+    acceleration[1] = static_cast<int16_t>(aaWorld.y);
+    acceleration[2] = static_cast<int16_t>(aaWorld.z);
+    txBuf[0] = (acceleration[0] >> 8);
+    txBuf[1] = acceleration[0];
+    txBuf[2] = (acceleration[1] >> 8);
+    txBuf[3] = acceleration[1];
+    txBuf[4] = (acceleration[2] >> 8);
+    txBuf[5] = acceleration[2];
+    CAN0.sendMsgBuf(0x100, 1, 8, txBuf);
+    rotation[0] = static_cast<int16_t>(100.0 * ypr[0] * (180.0 / M_PI)); // Yaw
+    rotation[1] = static_cast<int16_t>(100.0 * ypr[1] * (180.0 / M_PI)); // Pitch
+    rotation[2] = static_cast<int16_t>(100.0 * ypr[2] * (180.0 / M_PI)); // Roll
+    txBuf[0] = (rotation[0] >> 8);
+    txBuf[1] = rotation[0];
+    txBuf[2] = (rotation[1] >> 8);
+    txBuf[3] = rotation[1];
+    txBuf[4] = (rotation[2] >> 8);
+    txBuf[5] = rotation[2];
+    CAN0.sendMsgBuf(0x101, 1, 8, txBuf);
 #endif
   }
 }
