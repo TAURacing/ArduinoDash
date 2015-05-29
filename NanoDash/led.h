@@ -21,21 +21,43 @@ struct Colour
 class LED
 {
   public:
-  LED(Colour* ledCol);
+  LED()
+      : LED(nullptr, 0, 0, nullptr, nullptr, nullptr)
+  {
+  }
+  LED(Colour* theLed, int16_t lowThresh, int16_t highThresh, Colour* lowColour,
+      Colour* highColour, Colour* standardColour)
+      : LED(theLed)
+  {
+    setLed(theLed);
+    setLowThreshold(lowThresh);
+    setHighThreshold(highThresh);
+    setLowColour(lowColour);
+    setHighColour(highColour);
+    setStandardColour(standardColour);
+  }
+  LED(Colour* theLed) { led = theLed; }
   ~LED();
-  void setHighThreshold(int16_t thresh);
-  void setLowThreshold(int16_t thresh);
-  void setHighColour(Colour* col);
-  void setLowColour(Colour* col);
-  void setStandardColour(Colour* col);
+  void setLed(Colour* colour) { led = colour; }
+  void setHighThreshold(int16_t thresh) { highThreshold = thresh; }
+  void setLowThreshold(int16_t thresh) { lowThreshold = thresh; }
+  void setHighColour(Colour* col) { highColour = col; }
+  void setLowColour(Colour* col) { lowColour = col; }
+  void setStandardColour(Colour* col) { standardColour = col; }
+  void checkAndUpdate()
+  {
+    // TODO
+  }
 
   private:
-  int* ledCol;
+  Colour* led;
   int16_t lowThreshold;
   int16_t highThreshold;
   Colour* lowColour;
   Colour* highColour;
   Colour* standardColour;
+  unsigned long lastUpdate;
+  unsigned long deltaTime;
 };
 
 #endif // LED_H
