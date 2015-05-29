@@ -11,9 +11,24 @@
 #include "I2Cdev.h"
 #include "MPU6050_6Axis_MotionApps20.h"
 #include "Wire.h"
+#include "led.h"
+
+Colour colBlue(0, 0, 255);
+Colour colRed(255, 0, 0);
+Colour colGreen(0, 255, 0);
+
+static const int totalLEDs = 23 + 5;
+
+Colour ledColArray[totalLEDs];
+
+LED err1(ledColArray);
+LED err2(ledColArray + 1);
+LED err3(ledColArray + 2);
+LED err4(ledColArray + 3);
+LED err5(ledColArray + 4);
 
 // Enable or disable serial, needed for testMode!
-// #define SERIAL_ENABLED
+#define SERIAL_ENABLED
 
 /*
 // Defines for LED strip
@@ -84,7 +99,7 @@ int16_t rotation[3] = { 0 };
 // For sending x/y/z acceleration over CANBUS
 int16_t acceleration[3] = { 0 };
 // Set chip select pin
-MCP_CAN CAN0(MCP_CHIP_SELECT); 
+MCP_CAN CAN0(MCP_CHIP_SELECT);
 
 /*
 // Variables for MPU6050 accelerometer
@@ -97,7 +112,7 @@ uint8_t mpuIntStatus;
 // return status after each device operation (0 = success, !0 = error)
 uint8_t devStatus;
 // expected DMP packet size (default is 42 bytes)
-uint16_t packetSize;
+uint16_t packetSize = 42;
 // count of all bytes currently in FIFO
 uint16_t fifoCount;
 // FIFO storage buffer
@@ -157,6 +172,7 @@ void setup()
   Serial.begin(115200);
 #endif
 
+  /*
 // initialize device
 #ifdef SERIAL_ENABLED
   Serial.println(F("Initializing MPU"));
@@ -227,13 +243,14 @@ void setup()
 #endif
   }
 
-  /*
+  //
   // Initializing the MCP2515
-  */
+  //
   delay(500); // Delay needed during startup - Not sure why, but should be OK
               // for now
   CAN0.begin(CAN_1000KBPS);      // Initiate CAN to 1000KBPS
   pinMode(MCP_INTERRUPT, INPUT); // Setting pin for MCP interrupt
+  */
 }
 
 void loop()
@@ -245,13 +262,15 @@ void loop()
   // Used with testMode to generate mock RPM
   static unsigned long lastRpmUpdate = 0;
   // Used with testMode to generate mock RPM
-  static boolean upDown = 1;   
+  static boolean upDown = 1;
   // Use to test the system, generate a mock RPM
-  static boolean testMode = 0; 
+  static boolean testMode = 1;
 
+  /*
   // if programming failed, don't try to do anything
   if (!dmpReady)
     return;
+  */
 
   /*
   All actions not related directly to data gathering from the MPU6050 goes
@@ -261,6 +280,8 @@ void loop()
   // wait for MPU interrupt or extra packet(s) available
   while (!mpuInterrupt && fifoCount < packetSize)
   {
+    Serial.println("Looping");
+    /*
     // If MCP pin is low read data from recieved over CAN bus
     if (!digitalRead(MCP_INTERRUPT))
     {
@@ -297,6 +318,7 @@ void loop()
         }
       }
     }
+    */
 
     // If we are in testMode we want to generate a mock RPM
     if (testMode && (millis() - lastRpmUpdate > 10))
@@ -331,11 +353,11 @@ void loop()
       refreshLedStrip(rpm);
     }
   }
-
   /*
-  Anything following this point is related to data gathering from the
-  MPU6050 and outputting the data over serial if enabled
-  */
+  //
+  // Anything following this point is related to data gathering from the
+  // MPU6050 and outputting the data over serial if enabled
+  //
 
   // reset interrupt flag and get INT_STATUS byte
   mpuInterrupt = false;
@@ -388,7 +410,8 @@ void loop()
     txBuf[5] = acceleration[2];
     CAN0.sendMsgBuf(0x100, 1, 8, txBuf);
     rotation[0] = static_cast<int16_t>(100.0 * ypr[0] * (180.0 / M_PI)); // Yaw
-    rotation[1] = static_cast<int16_t>(100.0 * ypr[1] * (180.0 / M_PI)); // Pitch
+    rotation[1]
+        = static_cast<int16_t>(100.0 * ypr[1] * (180.0 / M_PI)); // Pitch
     rotation[2] = static_cast<int16_t>(100.0 * ypr[2] * (180.0 / M_PI)); // Roll
     txBuf[0] = (rotation[0] >> 8);
     txBuf[1] = rotation[0];
@@ -399,6 +422,7 @@ void loop()
     CAN0.sendMsgBuf(0x101, 1, 8, txBuf);
 #endif
   }
+  */
 }
 
 /*
