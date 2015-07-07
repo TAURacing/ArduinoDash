@@ -134,17 +134,21 @@ class LED
   LedState getNewState()
   {
     LedState state = standard;
-    if (*referenceValue < offThreshold)
+    if (*referenceValue <= offThreshold)
     {
       state = off;
     }
-    else if (*referenceValue < lowThreshold)
+    else if (*referenceValue <= lowThreshold)
     {
       state = low;
     }
-    else if (*referenceValue > highThreshold)
+    else if (*referenceValue >= highThreshold)
     {
       state = high;
+    }
+    else
+    {
+      // Return state is already standard if none of the above are a match
     }
     return state;
   }

@@ -22,6 +22,7 @@
 Colour colBlue(0, 0, 255);
 Colour colRed(255, 0, 0);
 Colour colGreen(0, 255, 0);
+Colour colYellow(255, 255, 0);
 Colour colOff(0, 0, 0);
 
 // Enable or disable serial, needed for testMode!
@@ -40,42 +41,59 @@ static const int totalLEDs = errorLEDs + rpmLEDs;
 
 Colour ledColArray[totalLEDs];
 
-int16_t err1Ref = -1001;
-int16_t err2Ref = -1001;
-int16_t err3Ref = -1001;
-int16_t err4Ref = -1001;
-int16_t err5Ref = -1001;
-int16_t rpmRef = 0;
-
-static const int16_t err1Off = -1000;
+// Sensor error
+// val != 0 -> red
+// errorFlagsL(U)
+int16_t sensorErr1Ref = 0;
+static const int16_t err1Off = 0;
 static const int16_t err1Low = 0;
-static const int16_t err1High = 1000;
-static const int16_t err2Off = -1000;
+static const int16_t err1High = 1;
+LED err1(ledColArray, &sensorErr1Ref, err1Off, err1Low, err1High, &colOff,
+         &colOff, &colOff, &colRed);
+
+// Check engine
+// Use sync state flag
+// 0, 1, 2 -> Yellow
+// 3 -> off
+int16_t engineErr2Ref = 0;
+static const int16_t err2Off = 0;
 static const int16_t err2Low = 0;
-static const int16_t err2High = 1000;
+static const int16_t err2High = 3;
+LED err2(ledColArray + 1, &engineErr2Ref, err2Off, err2Low, err2High,
+         &colYellow, &colYellow, &colYellow, &colOff);
+
+// Coolant temp
+// ect1
+// Blue < 60, Green < 100, Red > 100
+int16_t coolantErr3Ref = 0;
 static const int16_t err3Off = -1000;
-static const int16_t err3Low = 0;
-static const int16_t err3High = 1000;
-static const int16_t err4Off = -1000;
-static const int16_t err4Low = 0;
-static const int16_t err4High = 1000;
-static const int16_t err5Off = -1000;
-static const int16_t err5Low = 0;
-static const int16_t err5High = 1000;
+static const int16_t err3Low = 60*10;
+static const int16_t err3High = 100*10;
+LED err3(ledColArray + 2, &coolantErr3Ref, err3Off, err3Low, err3High, &colOff,
+         &colGreen, &colBlue, &colRed);
 
+// Battery voltage
+// vbat
+// Blue < 10, Red < 16, Off in between
+int16_t voltageErr4Ref = 0;
+static const int16_t err4Off = 0;
+static const int16_t err4Low = 10 * 1000;
+static const int16_t err4High = 16 * 1000;
+LED err4(ledColArray + 3, &voltageErr4Ref, err4Off, err4Low, err4High, &colOff,
+         &colOff, &colBlue, &colRed);
+
+// Launch control
+// != 0 -> Green
+// Else off
+int16_t launchErr5Ref = 0;
+static const int16_t err5Off = 0;
+static const int16_t err5Low = 1;
+static const int16_t err5High = 1;
+LED err5(ledColArray + 4, &launchErr5Ref, err5Off, err5Low, err5High, &colOff,
+         &colOff, &colGreen, &colGreen);
+
+int16_t rpmRef = 0;
 static const int16_t rpmHigh = 16000;
-
-LED err1(ledColArray, &err1Ref, err1Off, err1Low, err1High, &colOff, &colBlue,
-         &colGreen, &colRed);
-LED err2(ledColArray + 1, &err2Ref, err2Off, err2Low, err2High, &colOff,
-         &colBlue, &colGreen, &colRed);
-LED err3(ledColArray + 2, &err3Ref, err3Off, err3Low, err3High, &colOff,
-         &colBlue, &colGreen, &colRed);
-LED err4(ledColArray + 3, &err4Ref, err4Off, err4Low, err4High, &colOff,
-         &colBlue, &colGreen, &colRed);
-LED err5(ledColArray + 4, &err5Ref, err5Off, err5Low, err5High, &colOff,
-         &colBlue, &colGreen, &colRed);
-
 LED rpm[rpmLEDs];
 
 Adafruit_NeoPixel strip
@@ -160,9 +178,16 @@ void setup()
     }
 
 #ifndef IN_TESTMODE
+#ifdef SERIAL_ENABLED
+    Serial.println("Init CAN");
+#endif // SERIAL_ENABLED
 
     CAN0.begin(CAN_1000KBPS);      // Initiate CAN to 1000KBPS
     pinMode(MCP_INTERRUPT, INPUT); // Setting pin for MCP interrupt
+
+#ifdef SERIAL_ENABLED
+    Serial.println("Done init CAN");
+#endif // SERIAL_ENABLED
 
 #endif // IN_TESTMODE
 }
@@ -187,11 +212,11 @@ void loop()
             rpmRef = 0;
         }
     }
-    err1Ref = random(-2000, 2000);
-    err2Ref = random(-2000, 2000);
-    err3Ref = random(-2000, 2000);
-    err4Ref = random(-2000, 2000);
-    err5Ref = random(-2000, 2000);
+    sensorErr1Ref = random(-2000, 2000);
+    engineErr2Ref = random(-2000, 2000);
+    coolantErr3Ref = random(-2000, 2000);
+    voltageErr4Ref = random(-2000, 2000);
+    launchErr5Ref = random(-2000, 2000);
 #endif // IN_TESTMODE
 
 #ifndef IN_TESTMODE
@@ -199,12 +224,29 @@ void loop()
     // If MCP pin is low read data from recieved over CAN bus
     if (!digitalRead(MCP_INTERRUPT))
     {
+        // Serial.println("Got an interrupt.");
         CAN0.readMsgBuf(&len, rxBuf);
         rxId = CAN0.getCanId(); // Get message ID
         if (rxId == 0x600)
         {
             // Create a 16 bit number from two 8 bit data slots, store RPM
-            rpmRef = (int)((rxBuf[0] << 8) + rxBuf[1]);
+            rpmRef = (int16_t)((rxBuf[0] << 8) + rxBuf[1]);
+            // Store the vbat
+            voltageErr4Ref = (int16_t)((rxBuf[4] << 8) + rxBuf[5]);
+        }
+        else if (rxId == 0x601)
+        {
+            // Store the coolant temp
+            coolantErr3Ref = (int16_t)((rxBuf[2] << 8) + rxBuf[3]);
+        }
+        else if (rxId == 0x602)
+        {
+          // Store the sensor error flags
+          sensorErr1Ref = (int16_t)((rxBuf[0] << 8) + rxBuf[1]);
+          // Store the sync state
+          engineErr2Ref = (int16_t)((rxBuf[2] << 8) + rxBuf[3]);
+          // Store the launch state
+          launchErr5Ref = (int16_t)((rxBuf[4] << 8) + rxBuf[5]);
         }
     }
 

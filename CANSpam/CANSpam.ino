@@ -28,13 +28,14 @@ int16_t val3 = -16384;
 int16_t val4 = 8192;
 
 // 10 ms delay between packets
-const int packetDelay = 1;
+const int packetDelay = 1000;
 
 // Set chip select pin
 MCP_CAN CAN0(MCP_CHIP_SELECT);
 
 void setup()
 {
+  Serial.begin(115200);
   /*
   // Initializing the MCP2515
   */
@@ -84,14 +85,16 @@ void loop()
   txBuf4[6] = val3 >> 8;
   txBuf4[7] = val3;
 
-  CAN0.sendMsgBuf(0x100, 1, 8, txBuf1);
-  delay(packetDelay);
-  CAN0.sendMsgBuf(0x101, 1, 8, txBuf2);
-  delay(packetDelay);
+  //CAN0.sendMsgBuf(0x100, 1, 8, txBuf1);
+  //delay(packetDelay);
+
+  //CAN0.sendMsgBuf(0x101, 1, 8, txBuf2);
+  //delay(packetDelay);
   CAN0.sendMsgBuf(0x600, 1, 8, txBuf3);
+  Serial.println("Sent 0x100");
   delay(packetDelay);
-  CAN0.sendMsgBuf(0x601, 1, 8, txBuf4);
-  delay(packetDelay);
+  //CAN0.sendMsgBuf(0x601, 1, 8, txBuf4);
+  //delay(packetDelay);
 
   ++val1;
   ++val2;
